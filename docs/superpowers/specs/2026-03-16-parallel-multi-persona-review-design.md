@@ -38,7 +38,7 @@ When 2-3 personas are detected after parsing:
 
 **No changes to `references/reviewer-prompt.md`** — the prompt template stays as-is. Per-persona prompts are built exactly the same way as for a single persona today.
 
-**Codex backend (`--reviewer codex`):** Each persona gets its own Codex process with a unique temp file using a slugified persona name (lowercase, spaces to hyphens, special characters stripped — e.g., `/tmp/review-plan-output-security-engineer.md`). All temp files cleaned up after synthesis.
+**Codex backend (`--reviewer codex`):** Each persona gets its own Codex process with a unique temp file using a slugified persona name plus PID to avoid collisions under concurrent use (e.g., `/tmp/review-plan-output-security-engineer-$$.md`). All temp files cleaned up after synthesis.
 
 ### 3. Synthesis
 
@@ -98,7 +98,7 @@ After all parallel sub-agents return, the **orchestrating agent** (the main Clau
 
 ### 4. Edge Cases & Error Handling
 
-- **Sub-agent failure:** If one sub-agent fails (timeout, error), synthesize from the reports that did return. Note which persona's review was unavailable: *"Note: the [persona] review could not be completed. Synthesis is based on N-1 perspectives."*
+- **Sub-agent failure:** If one sub-agent fails, synthesize from the reports that did return. Note which persona's review was unavailable: *"Note: the [persona] review could not be completed. Synthesis is based on N-1 perspectives."* Failure detection is backend-dependent: for Claude, the Agent tool call itself errors; for Codex, a non-zero exit code or empty/missing output file.
 - **Identical personas:** Deduplicate before dispatch — don't waste a sub-agent on a duplicate.
 - **Mixed with `--reviewer codex`:** Each persona gets its own Codex process with a unique temp file. Temp files cleaned up after synthesis regardless of success/failure.
 - **Empty persona segment:** Ignore empty segments after comma-splitting, proceed with valid ones.
@@ -108,7 +108,7 @@ After all parallel sub-agents return, the **orchestrating agent** (the main Clau
 
 | File | Change |
 |------|--------|
-| `SKILL.md` | Update argument table, add multi-persona parsing rules, add parallel dispatch section, add synthesis section, update "Present the report" step |
+| `SKILL.md` | Update argument table, add multi-persona parsing rules, add parallel dispatch section, add synthesis section, update "Present the report" step, update Codex section to use per-persona temp files with PID suffix |
 | `README.md` | Update usage examples, argument table, and output format to reflect multi-persona support |
 | `references/reviewer-prompt.md` | No changes |
 
