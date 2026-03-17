@@ -34,6 +34,7 @@ git clone https://github.com/sucramual/review-plan-skill.git ~/.codex/skills/rev
 /review-plan --reviewer codex                         # cross-model review via Codex
 /review-plan --persona "security engineer"            # custom reviewer perspective
 /review-plan --persona "Andrej Karpathy" --context https://karpathy.ai/blog/...
+/review-plan --persona "security engineer, Tri Dao, performance engineer"  # parallel multi-persona
 /review-plan --context https://some-rfc.com/spec.md   # supplementary material
 ```
 
@@ -43,7 +44,7 @@ git clone https://github.com/sucramual/review-plan-skill.git ~/.codex/skills/rev
 |----------|---------|-------------|
 | Plan path | Auto-detect or prompt | Path to the plan file |
 | `--reviewer` | `claude` | `claude` (subagent) or `codex` (Codex CLI) |
-| `--persona` | senior/staff engineer | Role, discipline, or named person |
+| `--persona` | senior/staff engineer | Role, discipline, or named person. Comma-separated for multiple (max 3) — dispatches parallel independent reviewers and synthesizes a unified report |
 | `--context` | None | URLs or file paths — RFCs, blog posts, API docs, persona references |
 
 ### Output
@@ -68,6 +69,35 @@ A structured report ranked by severity:
 #### Overall Assessment
 [Ready to execute / needs revisions / needs rework]
 ```
+
+**Multi-persona output** — when multiple personas are provided, reports are synthesized into a single unified output with convergence attribution:
+
+```
+### Plan Review: [plan name]
+
+**Reviewed by:** security engineer, Tri Dao, performance engineer
+
+#### Critical Issues
+- **[Issue]** [3/3 personas]: [Description] → Suggested fix: [...]
+- **[Issue]** [1/3 — security engineer]: [Description] → Suggested fix: [...]
+
+#### Important Issues
+...
+
+#### Minor Issues
+...
+
+#### Strengths
+[Merged, attributed where persona-specific]
+
+#### Consensus & Disagreements
+[Where personas strongly agreed, and any notable contradictions between perspectives]
+
+#### Overall Assessment
+[Synthesized verdict — weighted toward consensus]
+```
+
+Within each severity tier, issues flagged by more personas sort higher — convergence = confidence. If one persona's review fails, the remaining reviews are still synthesized.
 
 ### What the reviewer checks
 

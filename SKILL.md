@@ -1,6 +1,6 @@
 ---
 name: review-plan
-description: Dispatch an independent reviewer (Claude subagent or Codex CLI) to critique an implementation plan with zero chat context. Use when seeking a second opinion on a plan, validating feasibility before execution, critiquing architecture decisions, or assessing risk. Supports cross-model review via --reviewer codex for a genuinely different perspective, custom personas (e.g., "security engineer", a named expert), and supplementary context via URLs or local files.
+description: Dispatch an independent reviewer (Claude subagent or Codex CLI) to critique an implementation plan with zero chat context. Use when seeking a second opinion on a plan, validating feasibility before execution, critiquing architecture decisions, or assessing risk. Supports cross-model review via --reviewer codex for a genuinely different perspective, custom personas (e.g., "security engineer", a named expert), multiple comma-separated personas for parallel independent review with synthesis, and supplementary context via URLs or local files.
 ---
 
 # Review Plan
@@ -25,7 +25,7 @@ All arguments are optional.
 |----------|---------|-------------|
 | Plan path | Auto-detect from conversation, or prompt | Path to the plan file |
 | `--reviewer` | `claude` | Reviewer backend — `claude` (subagent) or `codex` (Codex CLI) |
-| `--persona` | "senior/staff software engineer" | Reviewer perspective — a role, discipline, or named person |
+| `--persona` | "senior/staff software engineer" | Reviewer perspective — a role, discipline, or named person. Comma-separated for multiple (max 3) |
 | `--context` | None | URLs or file paths providing supplementary material (RFCs, blog posts, API docs, persona references) |
 
 ## Process
@@ -46,20 +46,41 @@ For each `--context` value:
 
 If a fetch fails, warn the user and continue with what succeeded.
 
-### 3. Build the reviewer persona
+### 3. Build the reviewer persona(s)
 
-Construct the persona instruction:
+#### Parse the `--persona` argument
+
+If `--persona` contains commas, split on commas and trim whitespace. Each segment becomes a distinct persona.
+
+- **Empty segments** (e.g., `"security engineer, , performance engineer"`) are ignored.
+- **Duplicate personas** are deduplicated before dispatch. Deduplication is case-insensitive and whitespace-normalized (trim + collapse internal whitespace). No semantic equivalence — `"security eng"` and `"security engineer"` are treated as distinct.
+- **1 persona** (or no `--persona`) → single-reviewer flow (current behavior, unchanged).
+- **2-3 personas** → parallel multi-persona flow (see step 4).
+- **4+ personas** → reject with: *"Maximum 3 personas supported. Please narrow your selection."*
+- The default persona (`"senior/staff software engineer"`) is **not** auto-included when explicit personas are given.
+
+#### Construct persona instructions
+
+For each persona, construct the persona instruction:
 - **No `--persona`**: "You are a senior/staff software engineer reviewing this plan with fresh eyes."
 - **Role-based** (e.g., "security engineer"): Shape priorities around that discipline — threat models, auth boundaries, etc.
 - **Named person** (e.g., "Andrej Karpathy"): Review through the lens of that person's known expertise and philosophy. If `--context` includes material about them, use it to ground the perspective.
 
-### 4. Dispatch the reviewer
+### 4. Dispatch the reviewer(s)
 
-Build the full reviewer prompt by combining: persona instruction + context materials + full plan content + review instructions and report format from [references/reviewer-prompt.md](references/reviewer-prompt.md).
+For each persona, build the full reviewer prompt by combining: persona instruction + context materials + full plan content + review instructions and report format from [references/reviewer-prompt.md](references/reviewer-prompt.md). All `--context` materials are provided to every reviewer identically. Only the persona instruction differs.
+
+#### Single persona
+
+Same as before — dispatch one reviewer.
+
+#### Multiple personas (2-3)
+
+Dispatch **all reviewers in a single message** using multiple parallel tool calls. This ensures true parallel execution. Each reviewer operates independently with no knowledge of the others.
 
 #### Claude backend (default)
 
-Use the Agent tool. Paste the full prompt directly — do not pass a file path for the subagent to find.
+Use the Agent tool. Paste the full prompt directly — do not pass a file path for the subagent to find. For multiple personas, use multiple Agent tool calls in a single message.
 
 - **Subagent tools:** Read, Glob, Grep, Bash (for codebase verification).
 - **Subagent does NOT receive:** chat history, design specs, or knowledge of why the plan was written.
@@ -68,19 +89,76 @@ Use the Agent tool. Paste the full prompt directly — do not pass a file path f
 
 First verify `codex` is available: `which codex`. If not found, inform the user to install it (`npm i -g @openai/codex`) and fall back to Claude.
 
-Write the full reviewer prompt to a temporary file, then invoke:
+Write each reviewer's full prompt to a unique temporary file using a slugified persona name plus PID to avoid collisions (e.g., `/tmp/review-plan-prompt-security-engineer-$$.md`), then invoke:
 
 ```bash
 codex exec \
   --sandbox read-only \
-  --output-last-message /tmp/review-plan-output.md \
-  "$(cat /tmp/review-plan-prompt.md)"
+  --output-last-message /tmp/review-plan-output-<persona-slug>-$$.md \
+  "$(cat /tmp/review-plan-prompt-<persona-slug>-$$.md)"
 ```
 
+For multiple personas, run all Codex processes in parallel (multiple Bash tool calls in a single message).
+
 - `--sandbox read-only` — reviewer can explore the codebase but cannot modify it.
-- Read the output from `/tmp/review-plan-output.md` when complete.
-- Clean up temp files after.
+- Read the output from each persona's output file when complete.
+- Clean up all temp files after, regardless of success or failure.
 
 ### 5. Present the report
 
-Display the reviewer's report. The user decides what to act on.
+#### Single persona
+
+Display the reviewer's report as-is. The user decides what to act on.
+
+#### Multiple personas: synthesize then present
+
+When 2-3 persona reviews return, synthesize them into a single unified report before presenting. The orchestrating agent (you) performs the synthesis — do not dispatch another subagent for this.
+
+**Synthesis process:**
+
+1. **Collect** all raw reports (held transiently in context).
+2. **Deduplicate** — identify issues that overlap across personas, even if framed differently (e.g., "auth gap" from a security engineer and "missing component" from an architect are the same underlying issue). This is best-effort using your judgment.
+3. **Merge overlapping issues** into a single entry:
+   - Use the strongest/most actionable framing as the primary description.
+   - **Severity reconciliation:** when personas assign different severity levels to the same issue, use the highest severity assigned by any persona.
+   - Add attribution showing which personas flagged it.
+4. **Preserve unique issues** — issues flagged by only one persona are kept and attributed.
+5. **Rank by convergence first, then severity** — within each severity tier (Critical/Important/Minor), issues flagged by more personas sort higher.
+6. **Discard raw reports** — only the unified synthesis is presented.
+
+**Attribution format:** When all N personas converge on an issue, show `[N/N personas]` without listing names. When fewer converge, show `[K/N — persona1, persona2]` with names.
+
+**Strengths:** Best-effort merge. No convergence counts — attribute to the originating persona where a strength is perspective-specific.
+
+**Synthesized output format:**
+
+```
+### Plan Review: [plan name]
+
+**Reviewed by:** persona1, persona2, persona3
+
+#### Critical Issues
+- **[Issue title]** [3/3 personas]: [Description] → Suggested fix: [...]
+- **[Issue title]** [1/3 — security engineer]: [Description] → Suggested fix: [...]
+
+#### Important Issues
+- **[Issue title]** [2/3 — persona1, persona2]: [Description] → Suggested fix: [...]
+
+#### Minor Issues
+...
+
+#### Strengths
+[Merged — deduplicated, attributed where persona-specific]
+
+#### Consensus & Disagreements
+[Where personas strongly agreed, and any notable contradictions between perspectives]
+
+#### Overall Assessment
+[Synthesized verdict — weighted toward consensus]
+```
+
+**Error handling:**
+- If one reviewer fails, synthesize from the reports that did return. Note: *"Note: the [persona] review could not be completed. Synthesis is based on N-1 perspectives."*
+- If all reviewers fail, inform the user and suggest retrying with fewer personas or a single persona.
+
+The user decides what to act on.
