@@ -162,3 +162,19 @@ When 2-3 persona reviews return, synthesize them into a single unified report be
 - If all reviewers fail, inform the user and suggest retrying with fewer personas or a single persona.
 
 The user decides what to act on.
+
+## Superpowers Integration
+
+This skill complements the [superpowers](https://github.com/anthropics/claude-code-superpowers) pipeline as an optional review gate before execution:
+
+```
+brainstorming → writing-plans → /review-plan (optional) → executing-plans
+```
+
+The superpowers writing-plans skill includes an internal plan-document-reviewer that checks *structure* (TODOs, placeholders, task decomposition, spec alignment). This skill provides a different kind of review — *critical evaluation of feasibility, architecture, and risk* by an independent reviewer with zero chat context and full codebase access.
+
+**Recommended usage:** After writing-plans completes and presents "Plan complete. Ready to execute?", run `/review-plan` on the saved plan file before proceeding to execution. Address any critical or important issues, then execute.
+
+```
+/review-plan docs/superpowers/plans/YYYY-MM-DD-feature-name.md
+```

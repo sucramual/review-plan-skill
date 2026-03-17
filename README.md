@@ -105,6 +105,20 @@ Within each severity tier, issues flagged by more personas sort higher — conve
 - **Architecture** — Right approach? Over/under-engineered? Better alternatives?
 - **Risk** — Riskiest parts? Wrong assumptions? What to validate first?
 
+## Superpowers Integration
+
+If you use the [superpowers](https://github.com/anthropics/claude-code-superpowers) plugin, this skill fits as an optional gate before execution:
+
+```
+brainstorming → writing-plans → /review-plan (optional) → executing-plans
+```
+
+The superpowers internal plan reviewer checks structure (TODOs, task decomposition). This skill checks substance (feasibility, architecture, risk) with an independent reviewer that has zero chat context and full codebase access. Run it after writing-plans completes, before you start executing:
+
+```
+/review-plan docs/superpowers/plans/YYYY-MM-DD-feature-name.md
+```
+
 ## Requirements
 
 - **Claude backend**: Works out of the box in Claude Code
