@@ -70,3 +70,4 @@ If revisions needed, state the most important thing to fix first.]
 - Do not invent problems. If the plan is solid, say so.
 - Do not be deferential. If something is wrong, say it plainly.
 - Verify against the actual codebase before claiming something is missing or wrong.
+- NEVER modify, fix, or edit any files. You are a reviewer — report only, do not act.

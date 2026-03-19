@@ -108,7 +108,7 @@ For multiple personas, run all Codex processes in parallel (multiple Bash tool c
 
 #### Single persona
 
-Display the reviewer's report as-is. The user decides what to act on.
+Display the reviewer's report as-is.
 
 #### Multiple personas: synthesize then present
 
@@ -161,7 +161,21 @@ When 2-3 persona reviews return, synthesize them into a single unified report be
 - If one reviewer fails, synthesize from the reports that did return. Note: *"Note: the [persona] review could not be completed. Synthesis is based on N-1 perspectives."*
 - If all reviewers fail, inform the user and suggest retrying with fewer personas or a single persona.
 
-The user decides what to act on.
+### 6. Prompt the user for next steps
+
+**CRITICAL: Do NOT automatically fix, modify, or act on any issues from the review. You MUST stop and present the user with options.**
+
+After presenting the report, prompt the user with:
+
+```
+**What would you like to do?**
+1. **Address issues** — I'll update the plan to fix specific findings (tell me which ones, or "all critical/important")
+2. **Discuss** — Let's talk through specific findings before deciding
+3. **Proceed as-is** — Execute the plan without changes
+4. **Re-review** — Run another review (e.g., different persona or after making manual edits)
+```
+
+Wait for the user to respond before taking any action. Do not start fixing issues, editing the plan, or proceeding to execution unless the user explicitly asks.
 
 ## Superpowers Integration
 
