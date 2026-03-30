@@ -165,19 +165,25 @@ When 2-3 persona reviews return, synthesize them into a single unified report be
 
 ### 6. Prompt the user for next steps
 
-**CRITICAL: Do NOT automatically fix, modify, or act on any issues from the review. You MUST stop and present the user with options.**
+<HARD-GATE>
+Do NOT automatically fix, modify, or act on any issues from the review. You MUST present the options below and wait for the user to respond. This prompt is mandatory — do not skip it, even if the report has no critical issues.
+</HARD-GATE>
 
 After presenting the report, prompt the user with:
 
 ```
 **What would you like to do?**
-1. **Address issues** — I'll update the plan to fix specific findings (tell me which ones, or "all critical/important")
-2. **Discuss** — Let's talk through specific findings before deciding
-3. **Proceed as-is** — Execute the plan without changes
-4. **Re-review** — Run another review (e.g., different persona or after making manual edits)
+1. **Fix all** — I'll update the plan to address all issues
+2. **Fix critical and important** — I'll update the plan to address critical and important issues only
+3. **Don't fix, proceed as-is** — Move on without changes
 ```
 
-Wait for the user to respond before taking any action. Do not start fixing issues, editing the plan, or proceeding to execution unless the user explicitly asks.
+Accept both numbered responses ("1") and natural language ("fix all", "fix everything") as valid selections.
+
+**Behavior by selection:**
+- **Option 1 or 2:** Apply the suggested fixes from the report directly to the plan file. Present a short summary of what was changed, then stop.
+- **Option 3:** Acknowledge and stop.
+- **Free-text response** (anything other than selecting an option): Acknowledge the input without modifying the plan or taking any other action.
 
 ## Superpowers Integration
 
