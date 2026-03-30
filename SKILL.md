@@ -95,8 +95,10 @@ Write each reviewer's full prompt to a unique temporary file using a slugified p
 codex exec \
   --sandbox read-only \
   --output-last-message /tmp/review-plan-output-<persona-slug>-$$.md \
-  "$(cat /tmp/review-plan-prompt-<persona-slug>-$$.md)"
+  - < /tmp/review-plan-prompt-<persona-slug>-$$.md
 ```
+
+**Important:** Pass the prompt via stdin (`- < file`) rather than as a shell argument (`"$(cat file)"`). Long prompts — especially with multiple personas — exceed shell argument limits or break on special characters, causing Codex to fall into interactive conversation mode instead of non-interactive exec.
 
 For multiple personas, run all Codex processes in parallel (multiple Bash tool calls in a single message).
 
