@@ -1,6 +1,6 @@
 ---
 name: review-plan
-description: Dispatch an independent reviewer (Claude subagent or Codex CLI) to critique an implementation plan with zero chat context. Use when seeking a second opinion on a plan, validating feasibility before execution, critiquing architecture decisions, or assessing risk. Supports cross-model review via --reviewer codex for a genuinely different perspective, custom personas (e.g., "security engineer", a named expert), multiple comma-separated personas for parallel independent review with synthesis, and supplementary context via URLs or local files.
+description: Dispatch an independent reviewer (Claude subagent or Codex) to critique an implementation plan with zero chat context. Use when seeking a second opinion on a plan, validating feasibility before execution, critiquing architecture decisions, or assessing risk. Supports cross-model review via --reviewer codex for a genuinely different perspective, custom personas (e.g., "security engineer", a named expert), multiple comma-separated personas for parallel independent review with synthesis, and supplementary context via URLs or local files.
 ---
 
 # Review Plan
@@ -9,7 +9,7 @@ Dispatch an independent, context-free reviewer to critique an implementation pla
 
 **Two reviewer backends:**
 - **Claude** (default) — subagent via Agent tool. Same model, fresh context. Zero setup.
-- **Codex** — OpenAI Codex CLI in non-interactive mode. Different model, genuinely independent perspective. Requires `codex` CLI installed and authenticated.
+- **Codex** — via the `codex` skill plugin (`codex:codex-rescue` subagent). Different model, genuinely independent perspective. Requires the codex plugin installed and authenticated — run `/codex:setup` to verify.
 
 ## Invocation
 
@@ -24,7 +24,7 @@ All arguments are optional.
 | Argument | Default | Description |
 |----------|---------|-------------|
 | Plan path | Auto-detect from conversation, or prompt | Path to the plan file |
-| `--reviewer` | `claude` | Reviewer backend — `claude` (subagent) or `codex` (Codex CLI) |
+| `--reviewer` | `claude` | Reviewer backend — `claude` (subagent) or `codex` (via codex skill plugin) |
 | `--persona` | "senior/staff software engineer" | Reviewer perspective — a role, discipline, or named person. Comma-separated for multiple (max 3) |
 | `--context` | None | URLs or file paths providing supplementary material (RFCs, blog posts, API docs, persona references) |
 
@@ -87,24 +87,13 @@ Use the Agent tool. Paste the full prompt directly — do not pass a file path f
 
 #### Codex backend (`--reviewer codex`)
 
-First verify `codex` is available: `which codex`. If not found, inform the user to install it (`npm i -g @openai/codex`) and fall back to Claude.
+First verify Codex is available by invoking the `codex:setup` skill via the Skill tool. If Codex is not installed or not authenticated, inform the user to run `/codex:setup` and fall back to Claude.
 
-Write each reviewer's full prompt to a unique temporary file using a slugified persona name plus PID to avoid collisions (e.g., `/tmp/review-plan-prompt-security-engineer-$$.md`), then invoke:
+For each persona, dispatch a `codex:codex-rescue` subagent via the Agent tool. Pass the full reviewer prompt (persona instruction + context materials + plan content + review instructions) as the agent's task. Explicitly state in the task that this is a **read-only review** — no file modifications should be made.
 
-```bash
-codex exec \
-  --sandbox read-only \
-  --output-last-message /tmp/review-plan-output-<persona-slug>-$$.md \
-  - < /tmp/review-plan-prompt-<persona-slug>-$$.md
-```
+For multiple personas, dispatch all `codex:codex-rescue` subagents in a single message using multiple parallel Agent tool calls.
 
-**Important:** Pass the prompt via stdin (`- < file`) rather than as a shell argument (`"$(cat file)"`). Long prompts — especially with multiple personas — exceed shell argument limits or break on special characters, causing Codex to fall into interactive conversation mode instead of non-interactive exec.
-
-For multiple personas, run all Codex processes in parallel (multiple Bash tool calls in a single message).
-
-- `--sandbox read-only` — reviewer can explore the codebase but cannot modify it.
-- Read the output from each persona's output file when complete.
-- Clean up all temp files after, regardless of success or failure.
+The `codex:codex-rescue` subagent handles all Codex invocation details (companion script, process management, output collection) via the `codex:codex-cli-runtime`. No manual `codex exec` commands or temp file management is needed.
 
 ### 5. Present the report
 

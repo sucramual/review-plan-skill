@@ -10,7 +10,7 @@ When you write a plan, you're anchored by the conversation that produced it. A f
 
 **Two reviewer backends:**
 - **Claude** (default) — subagent with zero chat context. Same model, fresh eyes. Zero setup.
-- **Codex** — OpenAI Codex CLI. Different model, genuinely independent perspective.
+- **Codex** — via the codex skill plugin. Different model, genuinely independent perspective.
 
 ## Install
 
@@ -20,11 +20,9 @@ When you write a plan, you're anchored by the conversation that produced it. A f
 git clone https://github.com/sucramual/review-plan-skill.git ~/.claude/skills/review-plan
 ```
 
-### Codex
+### Codex backend (optional)
 
-```bash
-git clone https://github.com/sucramual/review-plan-skill.git ~/.codex/skills/review-plan
-```
+The Codex reviewer backend requires the [codex plugin](https://github.com/openai/codex) for Claude Code. Run `/codex:setup` to verify installation and authentication.
 
 ## Usage
 
@@ -43,7 +41,7 @@ git clone https://github.com/sucramual/review-plan-skill.git ~/.codex/skills/rev
 | Argument | Default | Description |
 |----------|---------|-------------|
 | Plan path | Auto-detect or prompt | Path to the plan file |
-| `--reviewer` | `claude` | `claude` (subagent) or `codex` (Codex CLI) |
+| `--reviewer` | `claude` | `claude` (subagent) or `codex` (via codex plugin) |
 | `--persona` | senior/staff engineer | Role, discipline, or named person. Comma-separated for multiple (max 3) — dispatches parallel independent reviewers and synthesizes a unified report |
 | `--context` | None | URLs or file paths — RFCs, blog posts, API docs, persona references |
 
@@ -122,7 +120,7 @@ The superpowers internal plan reviewer checks structure (TODOs, task decompositi
 ## Requirements
 
 - **Claude backend**: Works out of the box in Claude Code
-- **Codex backend**: Requires [Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`)
+- **Codex backend**: Requires the [codex plugin](https://github.com/openai/codex) installed and authenticated (run `/codex:setup` to verify)
 
 ## License
 
